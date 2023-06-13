@@ -36,4 +36,6 @@
 .vscode/
 
 # cmake build files
-./build*
+build*
+dist/ocr
+dist/libs/*
