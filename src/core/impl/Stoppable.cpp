@@ -17,7 +17,10 @@ Stoppable::Stoppable(Stoppable* parent)
 
 Stoppable::~Stoppable()
 {
-
+    if (_parent)
+    {
+        _parent->delChild(this);
+    }
 }
 
 bool Stoppable::start()
@@ -100,6 +103,19 @@ void Stoppable::addChild(Stoppable* child)
 {
     std::unique_lock<std::mutex> l(_mutex);
     _childrens.push_back(child);
+}
+
+void Stoppable::delChild(Stoppable* child)
+{
+    std::unique_lock<std::mutex> l(_mutex);
+    for (auto iter = _childrens.begin(); iter != _childrens.end(); iter++)
+    {
+        if (*iter == child)
+        {
+            _childrens.erase(iter);
+            break;
+        }
+    }
 }
 
 }
