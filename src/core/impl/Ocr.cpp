@@ -278,27 +278,14 @@ void Ocr::calcOutFPS()
     {
         (void)id;
         uint32_t dpPollingInterval = dp->getPollingInterval();
-        if (0 == dpPollingInterval)
-        {
-            LOG(WARNING) << _streamURL << " datapoint " << dp->getID()
-                << " polling interval 0 will be ignore";
-            continue;
-        }
-        
         minPollingInterval = minPollingInterval > dpPollingInterval
             ? dpPollingInterval
             : minPollingInterval;
     }
-    
-    if (std::numeric_limits<std::uint32_t>::max() == minPollingInterval)
-    {
-        LOG(WARNING) << _streamURL << " no datapoint set polling interval";
-        _outFPS = 0;
-    }
-    else
-    {
-        _outFPS = (double)1000 / minPollingInterval;
-    }
+
+    _outFPS = std::numeric_limits<std::uint32_t>::max() == minPollingInterval
+                  ? 0
+                  : (double)1000 / minPollingInterval;
 
     LOG(INFO) << _streamURL << " calc out fps " << _outFPS;
 }
