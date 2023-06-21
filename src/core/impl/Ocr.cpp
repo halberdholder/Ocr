@@ -233,9 +233,23 @@ void Ocr::run()
     {
         if (_cap->grab())
         {
+#ifdef DEBUG_LOG
+            if ((pos++ % getFrameInterval()) == 0)
+            {
+                auto startTime = Timer::steady_clock::now();
+                _cap->retrieve(currentFrame);
+                LOG(DEBUG) << _streamURL << " retrieve frame time escaped "
+                           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  Timer::steady_clock::now() - startTime)
+                                  .count()
+                           << "ms";
+                putFrame(currentFrame);
+            }
+#else
             if ((pos++ % getFrameInterval()) == 0 &&
                     _cap->retrieve(currentFrame))
                 putFrame(currentFrame);
+#endif
         }
         else
         {

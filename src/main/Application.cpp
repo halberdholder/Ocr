@@ -46,9 +46,12 @@ void Application::initLog()
        _config->basePath + "logs/log_%datetime{%Y%M%d%H}.log");
     defaultConf.setGlobally(el::ConfigurationType::MillisecondsWidth, "3");
     defaultConf.setGlobally(el::ConfigurationType::MaxLogFileSize, "10485760");
-
+#ifndef DEBUG_LOG
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+#endif
+#ifndef TRACE_LOG
     defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+#endif
 
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
