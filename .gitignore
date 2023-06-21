@@ -39,3 +39,4 @@
 build*
 dist/ocr
 dist/libs/*
+dist/logs/*
