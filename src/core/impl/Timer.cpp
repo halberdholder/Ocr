@@ -12,20 +12,18 @@ Timer::~Timer()
 void Timer::start(
     int interval,
     bool immediately,
-    std::function<void(
-        std::chrono::time_point<std::chrono::system_clock> const& tp)> task)
+    std::function<void(system_time const& tp)> task)
 {
     if (!Stoppable::start())
         return;
 
     setInterval(interval);
 
-    auto now = std::chrono::steady_clock::now();
+    auto now = steady_clock::now();
     if (immediately)
         now -= std::chrono::milliseconds(getInterval());
 
-    std::thread([this, task](
-        std::chrono::time_point<std::chrono::steady_clock> tp) {
+    std::thread([this, task](steady_time tp) {
         while (!isStop())
         {
             LOG(TRACE) << "on timer timepoint="
@@ -33,8 +31,8 @@ void Timer::start(
                 << ", interval=" << getInterval();
             if (!waitUntilStop(tp + std::chrono::milliseconds(getInterval())))
             {
-                tp = std::chrono::steady_clock::now();
-                task(std::chrono::system_clock::now());
+                tp = steady_clock::now();
+                task(system_clock::now());
             }
         }
         stopped();

@@ -67,7 +67,7 @@ private:
 
 private:
     bool waitConnected();
-    void connect(std::chrono::time_point<std::chrono::system_clock> const& tp);
+    void connect(Timer::system_time const& tp);
     void run();
     void putFrame(cv::Mat const& Frame);
     void calcOutFPS();

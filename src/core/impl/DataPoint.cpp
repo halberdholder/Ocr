@@ -99,8 +99,7 @@ void DataPoint::releaseTessApi()
     }
 }
 
-void DataPoint::run(
-    std::chrono::time_point<std::chrono::system_clock> const& tp)
+void DataPoint::run(Timer::system_time const &tp)
 {
     cv::Mat frame;
 

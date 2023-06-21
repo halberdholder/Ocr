@@ -195,7 +195,7 @@ bool Ocr::waitConnected()
     return _opened.load();
 }
 
-void Ocr::connect(std::chrono::time_point<std::chrono::system_clock> const& tp)
+void Ocr::connect(Timer::system_time const &tp)
 {
     (void)tp;
     LOG(INFO) << _streamURL << " connecting...";

@@ -103,8 +103,7 @@ bool Application::run()
     return false;
 }
 
-void Application::checkDPConfig(
-    std::chrono::time_point<std::chrono::system_clock> const& tp)
+void Application::checkDPConfig(Timer::system_time const& tp)
 {
     (void)tp;
     bool modified = _dpConfigFileCheck->checkForFileModification();
