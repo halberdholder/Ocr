@@ -21,6 +21,7 @@ class Ocr : public Stoppable
 {
 public:
     static int32_t const DEFAULT_RECONNECT_INTERVAL;
+    static int32_t const DEFAULT_UPDATEINFPS_INTERVAL;
 
 public:
     Ocr() = delete;
@@ -51,7 +52,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<DataPoint>> _dpMap;
     double _inFPS;
     double _outFPS;
-    int _frameInterval;
+    std::atomic<int> _frameInterval;
 
     std::shared_mutex _mutexFrame;
     cv::Mat _frame;
@@ -64,6 +65,7 @@ private:
 
     Timer _connectTimer;
     Timer _runTimer;
+    Timer _updateInFPSTimer;
 
 private:
     bool waitConnected();
@@ -71,8 +73,9 @@ private:
     void run();
     void putFrame(cv::Mat const& Frame);
     void calcOutFPS();
+    void updateInFPS(Timer::system_time const &tp);
     void setFrameInterval();
-    int getFrameInterval();
+    inline int getFrameInterval();
 };
 
 
