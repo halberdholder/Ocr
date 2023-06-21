@@ -171,7 +171,6 @@ std::shared_ptr<DataPoint> Ocr::getDataPoint(std::string const& id)
     return NULL;
 }
 
-
 bool Ocr::waitConnected()
 {
     LOG(INFO) << _streamURL << " _opened=" << _opened.load();
@@ -293,19 +292,23 @@ void Ocr::calcOutFPS()
     
     if (std::numeric_limits<std::uint32_t>::max() == minPollingInterval)
     {
-        LOG(WARNING) << _streamURL << "set min polling interval to default "
-            << DataPoint::DEFAULT_POOLING_INTERVAL;
-        minPollingInterval = DataPoint::DEFAULT_POOLING_INTERVAL;
+        LOG(WARNING) << _streamURL << " no datapoint set polling interval";
+        _outFPS = 0;
+    }
+    else
+    {
+        _outFPS = (double)1000 / minPollingInterval;
     }
 
-    _outFPS = (double)1000 / minPollingInterval;
     LOG(INFO) << _streamURL << " calc out fps " << _outFPS;
 }
 
 void Ocr::setFrameInterval()
 {
     std::lock_guard<std::recursive_mutex> l(_mutexDP);
-    _frameInterval = _inFPS / _outFPS;
+    _frameInterval = _outFPS == 0
+        ? std::numeric_limits<int>::max()
+        : _inFPS / _outFPS;
     if (0 == _frameInterval)
         _frameInterval = 1;
     LOG(INFO) << _streamURL << " in fps " << _inFPS
