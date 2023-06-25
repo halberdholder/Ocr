@@ -6,11 +6,11 @@ these package above first.
 ## Dependencies
 * A compiler for C and C++: GCC or Clang
 * cmake and make
-* libjpeg-dev libpng-dev libtiff5-dev zlib1g-dev libwebpdemux2 libwebp-dev libopenjp2-7 libopenjp2-7-dev libcurl4-openssl-dev libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
+* libjpeg-dev libpng-dev libtiff5-dev zlib1g-dev libwebpdemux2 libwebp-dev libopenjp2-7 libopenjp2-7-dev libcurl4-openssl-dev libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libarchive-dev
 
 ```
 > apt-get update
-> apt-get install libjpeg-dev libpng-dev libtiff5-dev zlib1g-dev libwebpdemux2 libwebp-dev libopenjp2-7 libopenjp2-7-dev libcurl4-openssl-dev libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
+> apt-get install libjpeg-dev libpng-dev libtiff5-dev zlib1g-dev libwebpdemux2 libwebp-dev libopenjp2-7 libopenjp2-7-dev libcurl4-openssl-dev libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libarchive-dev
 ```
 
 Download there 3rd-party project sources from github, and build it.
