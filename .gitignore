@@ -40,3 +40,6 @@ build*
 dist/ocr
 dist/libs/*
 dist/logs/*
+
+# generated files
+*.png

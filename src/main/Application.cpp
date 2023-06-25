@@ -65,7 +65,10 @@ void Application::setup()
 {
     _ocr = std::move(makeOcr(
         NULL,
-        _config->mProtocolConfig.value,
+        _config->mProtocolConfig.streamURL,
+        _config->mProtocolConfig.saveOneImage
+            ? _config->basePath
+            : "",
         _config->RECONNECT_INTERVAL));
 
     for (auto const& dpConfig : _config->vDataPointConfig)

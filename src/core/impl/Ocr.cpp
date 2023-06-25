@@ -4,10 +4,12 @@
 #include <exception>
 #include <assert.h>
 #include <opencv2/videoio.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "3rdparty/easyloggingpp/easylogging++.h"
 #include "core/DataPoint.h"
 #include "core/Ocr.h"
+#include "utils/Common.h"
 
 
 namespace c2matica {
@@ -15,8 +17,16 @@ namespace c2matica {
 int32_t const Ocr::DEFAULT_RECONNECT_INTERVAL = 1000; // ms
 int32_t const Ocr::DEFAULT_UPDATEINFPS_INTERVAL = 1000; //ms
 
-Ocr::Ocr(Stoppable *parent, std::string streamURL, int32_t reconnectInterval)
-    : Stoppable(parent), _streamURL(streamURL), _cap(NULL), _reconnectInterval(reconnectInterval)
+Ocr::Ocr(
+    Stoppable *parent,
+    std::string streamURL,
+    std::string saveImageDirPath,
+    int32_t reconnectInterval)
+    : Stoppable(parent)
+    , _streamURL(streamURL)
+    , _saveImageDirPath(saveImageDirPath)
+    , _cap(NULL)
+    , _reconnectInterval(reconnectInterval)
 {
     if (_reconnectInterval <= 0)
     {
@@ -56,6 +66,8 @@ bool Ocr::start()
         DEFAULT_UPDATEINFPS_INTERVAL,
         false,
         std::bind(&Ocr::updateInFPS, this, std::placeholders::_1));
+    
+    takeAImage();
     _runTimer.run(std::bind(&Ocr::run, this));
 
     onStart();
@@ -345,14 +357,68 @@ int Ocr::getFrameInterval()
     return _frameInterval.load();
 }
 
+bool Ocr::takeAImage()
+{
+    static bool imWrited = false;
+
+    if (_saveImageDirPath.size() <= 0 || imWrited)
+        return true;
+
+    std::string now = timeFormatNow();
+    std::string filename = _saveImageDirPath + now + ".png";
+    LOG(INFO) << _streamURL << " saving image to file " << filename;
+
+    int retry = 0;
+    cv::Mat frame;
+    while (retry < 5)
+    {
+        try
+        {
+            if (_cap->read(frame) && !frame.empty())
+            {
+                if (imwrite(filename, frame))
+                {
+                    LOG(INFO) << _streamURL << " saved PNG file success";
+                    break;
+                }
+                else
+                {
+                    LOG(WARNING) << _streamURL << " can't save PNG file";
+                }
+            }
+            else
+            {
+                LOG(WARNING) << _streamURL << " read blank frame";
+            }
+        }
+        catch (const cv::Exception &ex)
+        {
+            LOG(ERROR) << _streamURL
+                << " save image to PNG exception: " << ex.what();
+        }
+        ++retry;
+    }
+
+    if (retry >= 5)
+    {
+        LOG(ERROR) << "";
+        return false;
+    }
+    
+    imWrited = true;
+    return true;
+}
+
 // -----------------------------------------------------------------------
 
 std::unique_ptr<Ocr> makeOcr(
     Stoppable *parent,
     std::string streamURL,
+    std::string saveImageDirPath,
     int32_t reconnectInterval = Ocr::DEFAULT_RECONNECT_INTERVAL)
 {
-    return std::make_unique<Ocr>(parent, streamURL, reconnectInterval);
+    return std::make_unique<Ocr>(
+        parent, streamURL, saveImageDirPath, reconnectInterval);
 }
 
 }
