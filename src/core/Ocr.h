@@ -21,11 +21,13 @@ class Ocr : public Stoppable
 {
 public:
     static int32_t const DEFAULT_RECONNECT_INTERVAL;
+    static int32_t const DEFAULT_UPDATEINFPS_INTERVAL;
 
 public:
     Ocr() = delete;
     Ocr(Stoppable* parent,
         std::string streamURL,
+        std::string saveImageDirPath,
         int32_t reconnectInterval = DEFAULT_RECONNECT_INTERVAL);
     ~Ocr();
 
@@ -44,6 +46,7 @@ public:
 
 private:
     const std::string _streamURL;
+    const std::string _saveImageDirPath;
 
     std::shared_ptr<cv::VideoCapture> _cap;
     
@@ -51,7 +54,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<DataPoint>> _dpMap;
     double _inFPS;
     double _outFPS;
-    int _frameInterval;
+    std::atomic<int> _frameInterval;
 
     std::shared_mutex _mutexFrame;
     cv::Mat _frame;
@@ -64,23 +67,26 @@ private:
 
     Timer _connectTimer;
     Timer _runTimer;
+    Timer _updateInFPSTimer;
 
 private:
     bool waitConnected();
-    void connect(std::chrono::time_point<std::chrono::system_clock> const& tp);
+    void connect(Timer::system_time const& tp);
     void run();
     void putFrame(cv::Mat const& Frame);
     void calcOutFPS();
+    void updateInFPS(Timer::system_time const &tp);
     void setFrameInterval();
-    int getFrameInterval();
+    inline int getFrameInterval();
+
+    bool takeAImage();
 };
 
-
 std::unique_ptr<Ocr> makeOcr(
-    Stoppable* parent,
+    Stoppable *parent,
     std::string streamURL,
+    std::string saveImageDirPath,
     int32_t reconnectInterval);
-
 }
 
 #endif

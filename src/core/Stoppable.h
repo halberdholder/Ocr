@@ -40,6 +40,7 @@ private:
     std::condition_variable _cvStopped;
 
     void addChild(Stoppable* child);
+    void delChild(Stoppable* child);
 };
 
 }

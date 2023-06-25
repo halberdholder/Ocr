@@ -4,19 +4,27 @@
 #include <exception>
 #include <assert.h>
 #include <opencv2/videoio.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "3rdparty/easyloggingpp/easylogging++.h"
 #include "core/DataPoint.h"
 #include "core/Ocr.h"
+#include "utils/Common.h"
 
 
 namespace c2matica {
 
 int32_t const Ocr::DEFAULT_RECONNECT_INTERVAL = 1000; // ms
+int32_t const Ocr::DEFAULT_UPDATEINFPS_INTERVAL = 1000; //ms
 
-Ocr::Ocr(Stoppable* parent, std::string streamURL, int32_t reconnectInterval)
+Ocr::Ocr(
+    Stoppable *parent,
+    std::string streamURL,
+    std::string saveImageDirPath,
+    int32_t reconnectInterval)
     : Stoppable(parent)
     , _streamURL(streamURL)
+    , _saveImageDirPath(saveImageDirPath)
     , _cap(NULL)
     , _reconnectInterval(reconnectInterval)
 {
@@ -33,9 +41,6 @@ Ocr::~Ocr()
 
 bool Ocr::start()
 {
-    // if (_dpMap.size() <= 0)
-    //     return false;
-
     if (!Stoppable::start())
     {
         LOG(WARNING) << _streamURL << " ocr has allready started";
@@ -45,6 +50,9 @@ bool Ocr::start()
     LOG(INFO) << _streamURL << " ocr started";
 
     _cap = std::make_shared<cv::VideoCapture>();
+    _inFPS = 0;
+    _outFPS = 0;
+    _frameInterval.store(std::numeric_limits<int>::max());
 
     calcOutFPS();
 
@@ -54,6 +62,12 @@ bool Ocr::start()
         return false;
     }
 
+    _updateInFPSTimer.start(
+        DEFAULT_UPDATEINFPS_INTERVAL,
+        false,
+        std::bind(&Ocr::updateInFPS, this, std::placeholders::_1));
+    
+    takeAImage();
     _runTimer.run(std::bind(&Ocr::run, this));
 
     onStart();
@@ -70,9 +84,10 @@ void Ocr::stop()
 
     LOG(INFO) << _streamURL << " ocr stoping";
     _connectTimer.stop();
+    _updateInFPSTimer.stop();
     _runTimer.stop();
     _cap->release();
-    
+
     stopped();
     Stoppable::stop();
     LOG(INFO) << _streamURL << " ocr stopped";
@@ -87,9 +102,9 @@ bool Ocr::addDataPoint(std::shared_ptr<DataPoint> dataPoint)
         if (isStart())
         {
             calcOutFPS();
+            setFrameInterval();
             if (_opened.load())
             {
-                setFrameInterval();
                 dataPoint->start();
             }
         }
@@ -108,10 +123,7 @@ bool Ocr::delDataPoint(std::string const& id)
         if (isStart())
         {
             calcOutFPS();
-            if (_opened.load())
-            {
-                setFrameInterval();
-            }
+            setFrameInterval();
         }
         return true;
     }
@@ -138,15 +150,12 @@ void Ocr::modDataPoint(std::shared_ptr<DataPoint> newDP)
     {
         LOG(INFO) << _streamURL << " modify datapoint " << oldDP->getID()
             << " polling interval to " << newPollingInterval;
-        oldDP->setPollingInterval(newPollingInterval);
         if (isStart())
         {
             calcOutFPS();
-            if (_opened.load())
-            {
-                setFrameInterval();
-            }
+            setFrameInterval();
         }
+        oldDP->setPollingInterval(newPollingInterval);
     }
 
     if (oldDP->getCoordinate() != newCoordinate)
@@ -170,7 +179,6 @@ std::shared_ptr<DataPoint> Ocr::getDataPoint(std::string const& id)
     }
     return NULL;
 }
-
 
 bool Ocr::waitConnected()
 {
@@ -196,7 +204,7 @@ bool Ocr::waitConnected()
     return _opened.load();
 }
 
-void Ocr::connect(std::chrono::time_point<std::chrono::system_clock> const& tp)
+void Ocr::connect(Timer::system_time const &tp)
 {
     (void)tp;
     LOG(INFO) << _streamURL << " connecting...";
@@ -206,11 +214,12 @@ void Ocr::connect(std::chrono::time_point<std::chrono::system_clock> const& tp)
     {
         LOG(INFO) << _streamURL << " open video stream success";
         _cap->set(cv::CAP_PROP_BUFFERSIZE, 0);
-        // TODO check inPFS realtime
-        _inFPS = _cap->get(cv::CAP_PROP_FPS);
-        setFrameInterval();
-
+        {
+            std::lock_guard<std::recursive_mutex> l(_mutexDP);
+            _inFPS = _cap->get(cv::CAP_PROP_FPS);
+        }
         _opened.store(true);
+        setFrameInterval();
         _cv.notify_all();
     }
     else
@@ -236,9 +245,23 @@ void Ocr::run()
     {
         if (_cap->grab())
         {
-            if ((pos++ % getFrameInterval()) == 0 &&
-                _cap->retrieve(currentFrame))
+#ifdef DEBUG_LOG
+            if ((pos++ % getFrameInterval()) == 0)
+            {
+                auto startTime = Timer::steady_clock::now();
+                _cap->retrieve(currentFrame);
+                LOG(DEBUG) << _streamURL << " retrieve frame time escaped "
+                           << std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  Timer::steady_clock::now() - startTime)
+                                  .count()
+                           << "ms";
                 putFrame(currentFrame);
+            }
+#else
+            if ((pos++ % getFrameInterval()) == 0 &&
+                    _cap->retrieve(currentFrame))
+                putFrame(currentFrame);
+#endif
         }
         else
         {
@@ -279,54 +302,123 @@ void Ocr::calcOutFPS()
     {
         (void)id;
         uint32_t dpPollingInterval = dp->getPollingInterval();
-        if (0 == dpPollingInterval)
-        {
-            LOG(WARNING) << _streamURL << " datapoint " << dp->getID()
-                << " polling interval 0 will be ignore";
-            continue;
-        }
-        
         minPollingInterval = minPollingInterval > dpPollingInterval
             ? dpPollingInterval
             : minPollingInterval;
     }
-    
-    if (std::numeric_limits<std::uint32_t>::max() == minPollingInterval)
-    {
-        LOG(WARNING) << _streamURL << "set min polling interval to default "
-            << DataPoint::DEFAULT_POOLING_INTERVAL;
-        minPollingInterval = DataPoint::DEFAULT_POOLING_INTERVAL;
-    }
 
-    _outFPS = (double)1000 / minPollingInterval;
+    _outFPS = std::numeric_limits<std::uint32_t>::max() == minPollingInterval
+                  ? 0
+                  : (double)1000 / minPollingInterval;
+
     LOG(INFO) << _streamURL << " calc out fps " << _outFPS;
+}
+
+void Ocr::updateInFPS(Timer::system_time const &tp)
+{
+    (void)tp;
+    if (!_opened.load())
+        return;
+
+    double fps = _cap->get(cv::CAP_PROP_FPS);
+    LOG(TRACE) << _streamURL << " in fps " << fps;
+
+    std::lock_guard<std::recursive_mutex> l(_mutexDP);
+    if (fps == _inFPS)
+        return;
+
+    _inFPS = fps;
+    setFrameInterval();
 }
 
 void Ocr::setFrameInterval()
 {
+    if (!_opened.load())
+        return;
+
     std::lock_guard<std::recursive_mutex> l(_mutexDP);
-    _frameInterval = _inFPS / _outFPS;
-    if (0 == _frameInterval)
-        _frameInterval = 1;
+    if (_inFPS == 0)
+        return;
+
+    int interval = _outFPS == 0
+        ? std::numeric_limits<int>::max()
+        : _inFPS / _outFPS;
+    if (0 == interval)
+        interval = 1;
     LOG(INFO) << _streamURL << " in fps " << _inFPS
-        << ", out fps " << _outFPS
-        << ", out frame interval " << _frameInterval;
+            << ", out fps " << _outFPS
+            << ", out frame interval " << interval;
+
+    _frameInterval.store(interval);
 }
 
 int Ocr::getFrameInterval()
 {
-    std::lock_guard<std::recursive_mutex> l(_mutexDP);
-    return _frameInterval;
+    return _frameInterval.load();
+}
+
+bool Ocr::takeAImage()
+{
+    static bool imWrited = false;
+
+    if (_saveImageDirPath.size() <= 0 || imWrited)
+        return true;
+
+    std::string now = timeFormatNow();
+    std::string filename = _saveImageDirPath + now + ".png";
+    LOG(INFO) << _streamURL << " saving image to file " << filename;
+
+    int retry = 0;
+    cv::Mat frame;
+    while (retry < 5)
+    {
+        try
+        {
+            if (_cap->read(frame) && !frame.empty())
+            {
+                if (imwrite(filename, frame))
+                {
+                    LOG(INFO) << _streamURL << " saved PNG file success";
+                    break;
+                }
+                else
+                {
+                    LOG(WARNING) << _streamURL << " can't save PNG file";
+                }
+            }
+            else
+            {
+                LOG(WARNING) << _streamURL << " read blank frame";
+            }
+        }
+        catch (const cv::Exception &ex)
+        {
+            LOG(ERROR) << _streamURL
+                << " save image to PNG exception: " << ex.what();
+        }
+        ++retry;
+    }
+
+    if (retry >= 5)
+    {
+        LOG(ERROR) << "";
+        return false;
+    }
+    
+    imWrited = true;
+    return true;
 }
 
 // -----------------------------------------------------------------------
 
 std::unique_ptr<Ocr> makeOcr(
-    Stoppable* parent,
+    Stoppable *parent,
     std::string streamURL,
+    std::string saveImageDirPath,
     int32_t reconnectInterval = Ocr::DEFAULT_RECONNECT_INTERVAL)
 {
-    return std::make_unique<Ocr>(parent, streamURL, reconnectInterval);
+    return std::make_unique<Ocr>(
+        parent, streamURL, saveImageDirPath, reconnectInterval);
 }
 
 }

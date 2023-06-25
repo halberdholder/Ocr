@@ -14,6 +14,17 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 
+option(DEBUG_LOG "enable debug log" OFF)
+option(TRACE_LOG "enable trace log" OFF)
+
+if (DEBUG_LOG)
+  add_definitions(-DDEBUG_LOG)
+endif()
+
+if (TRACE_LOG)
+  add_definitions(-DTRACE_LOG)
+endif()
+
 add_definitions(-DELPP_NO_DEFAULT_LOG_FILE)
 add_definitions("-Wall")
 add_definitions("-fopenmp")

@@ -19,21 +19,21 @@ Download there 3rd-party project sources from github, and build it.
 ```
 > mkdir build_release && cd build_release
 > cmake -DBUILD_SHARED_LIBS=OFF ..
-> make [-j<number parallel>] && make install
+> make [-j$(nproc)] && make install
 ```
 
 ## Build tesseract-5.3.1
 ```
 > mkdir build_release && cd build_release
 > cmake -DBUILD_SHARED_LIBS=OFF -DBUILD_TRAINING_TOOLS=OFF ..
-> make [-j<number parallel>] && make install
+> make [-j$(nproc)] && make install
 ```
 
 ## Build opencv-4.0.0
 ```
 > mkdir build_release && cd build_release
 > cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOPENCV_FORCE_3RDPARTY_BUILD=ON -DOPENCV_GENERATE_PKGCONFIG=ON -DBUILD_TIFF=ON -DBUILD_JPEG=ON -DBUILD_PNG=ON -DBUILD_WEBP=ON -DBUILD_PERF_TESTS=OFF -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local ..
-> make [-j<number parallel>] && make install
+> make [-j$(nproc)] && make install
 ```
 
 ## Build this project
@@ -51,7 +51,7 @@ or build with debug info
 > cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 ```
-> make [VERBOSE=1 | -j<number parallel>]
+> make [VERBOSE=1 | -j$(nproc)]
 > make install
 > make copy
 ```

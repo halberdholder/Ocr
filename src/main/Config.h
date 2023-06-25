@@ -22,9 +22,8 @@ public:
 public:
     struct ProtocolConfig
     {
-        std::string category;
-        std::string value;
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(ProtocolConfig, category, value);
+        std::string streamURL;
+        bool saveOneImage;
     };
 
     struct DataPointConfig

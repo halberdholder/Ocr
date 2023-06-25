@@ -26,6 +26,8 @@ Config::Config(std::string base)
     protocolConfigFile = basePath + PROTOCOL_CONFIG_FILE;
     datapointConfigFile = basePath + DATAPOINT_CONFIG_FILE;
     tessdataPath = basePath + TESSDATA_DIR;
+    
+    mProtocolConfig.saveOneImage = false;
 }
 
 bool Config::load()
@@ -61,16 +63,28 @@ bool Config::loadAppConfig()
         json protocolConfig = j["protocolConfig"];
         for (std::size_t i = 0; i < protocolConfig.size(); i++)
         {
-            mProtocolConfig = protocolConfig[i].get<ProtocolConfig>();
-            if (mProtocolConfig.category == "streamURL")
+            std::string category;
+            protocolConfig[i].at("category").get_to(category);
+            if (category == "streamURL")
             {
-                break;
+                protocolConfig[i].at("value").get_to(mProtocolConfig.streamURL);
+            }
+            else if (category == "saveOneImage")
+            {
+                protocolConfig[i].at("value").get_to(mProtocolConfig.saveOneImage);
             }
         }
     }
     catch (std::exception& e)
     {
         LOG(ERROR) << "parse protocolConfig file failed: " << e.what();
+        return false;
+    }
+
+    if (mProtocolConfig.streamURL.compare(0, 7, "rtsp://"))
+    {
+        LOG(ERROR) << "malformed protocolConfig file: "
+                   << "streamURL must start with rtsp://";
         return false;
     }
 

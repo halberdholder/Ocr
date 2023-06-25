@@ -74,7 +74,7 @@ private:
     bool initTessApi();
     void releaseTessApi();
 
-    void run(std::chrono::time_point<std::chrono::system_clock> const& tp);
+    void run(Timer::system_time const &tp);
 };
 
 std::shared_ptr<DataPoint> makeDataPoint(

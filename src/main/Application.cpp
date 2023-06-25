@@ -46,9 +46,12 @@ void Application::initLog()
        _config->basePath + "logs/log_%datetime{%Y%M%d%H}.log");
     defaultConf.setGlobally(el::ConfigurationType::MillisecondsWidth, "3");
     defaultConf.setGlobally(el::ConfigurationType::MaxLogFileSize, "10485760");
-
+#ifndef DEBUG_LOG
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+#endif
+#ifndef TRACE_LOG
     defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+#endif
 
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
@@ -62,7 +65,10 @@ void Application::setup()
 {
     _ocr = std::move(makeOcr(
         NULL,
-        _config->mProtocolConfig.value,
+        _config->mProtocolConfig.streamURL,
+        _config->mProtocolConfig.saveOneImage
+            ? _config->basePath
+            : "",
         _config->RECONNECT_INTERVAL));
 
     for (auto const& dpConfig : _config->vDataPointConfig)
@@ -103,8 +109,7 @@ bool Application::run()
     return false;
 }
 
-void Application::checkDPConfig(
-    std::chrono::time_point<std::chrono::system_clock> const& tp)
+void Application::checkDPConfig(Timer::system_time const& tp)
 {
     (void)tp;
     bool modified = _dpConfigFileCheck->checkForFileModification();

@@ -38,8 +38,7 @@ private:
     // stop cv
     std::condition_variable _cv;
 
-    void checkDPConfig(
-        std::chrono::time_point<std::chrono::system_clock> const &tp);
+    void checkDPConfig(Timer::system_time const &tp);
 };
 
 std::unique_ptr<Application>

@@ -99,8 +99,7 @@ void DataPoint::releaseTessApi()
     }
 }
 
-void DataPoint::run(
-    std::chrono::time_point<std::chrono::system_clock> const& tp)
+void DataPoint::run(Timer::system_time const &tp)
 {
     cv::Mat frame;
 
@@ -154,6 +153,12 @@ void DataPoint::run(
 
 void DataPoint::setPollingInterval(uint32_t poolingInterval)
 {
+    if (poolingInterval == 0)
+    {
+        LOG(WARNING) << _id << " cannot set polling interval to 0";
+        return;
+    }
+
     std::unique_lock<std::shared_mutex> l(_mutex);
     if (_pollingInterval == poolingInterval)
         return;
