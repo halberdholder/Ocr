@@ -401,7 +401,8 @@ bool Ocr::takeAImage()
 
     if (retry >= 5)
     {
-        LOG(ERROR) << "";
+        LOG(ERROR) << _streamURL
+            << " finally save image to file failed after a few attempts";
         return false;
     }
     
